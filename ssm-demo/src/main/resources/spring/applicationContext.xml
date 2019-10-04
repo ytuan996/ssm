@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!--配置注解的扫描驱动-->
+    <context:annotation-config/>
+    <context:component-scan base-package="com.ytuan.ssm">
+        <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+
+    <!--加载外部属性配置文件-->
+    <context:property-placeholder location="classpath:db.properties"/>
+
+    <!--Spring本身实现的数据库连接池-->
+    <bean id="dataSourceSpring" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driverClass" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <!--Druid数据库连接池-->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url" value="${jdbc.url}"/>
+        <property name="username" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="maxActive" value=""/>
+        <property name="maxIdle" value=""/>
+        <property name="maxWait" value=""/>
+    </bean>
+
+    <!--用于生成mybatis SqlSession的 SqlSessionFactory-->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <!--mybatis的全局配置， 可以在这里指定的文件中(sqlMapConfig.xml)配置mapper所在的位置-->
+        <property name="configLocation" value="classpath:mybatis/sqlMapConfig.xml"/>
+        <property name="mapperLocations" value="classpath:mybatis/mapper/*.xml"/>
+    </bean>
+
+    <!--用于扫描并生成Mapper实例-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.ytuan.ssm.mapper"/>
+        <property name="annotationClass" value="org.springframework.stereotype.Repository"/>
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+    </bean>
+
+    <!--配置数据库的事务管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!--声明式事务的注解驱动-->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!--使用xml配置事务拦截器-->
+    <bean id="transactionInterceptor" class="org.springframework.transaction.interceptor.TransactionInterceptor">
+        <property name="transactionManager" value="transactionManager"/>
+        <property name="transactionAttributes">
+            <props>
+                <!--key是业务方法的正则匹配， 而value就是对应的事务策略-->
+                <prop key="insert*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="save*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="add*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="select*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="get*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="find*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="remove*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+                <prop key="update*">PROPAGATION_REQUIRED,ISOLATION_READ_UNCOMMITTED</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!--配置transactionInterceptor拦截哪些类-->
+    <bean id="autoProxyCreator" class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator">
+        <property name="beanNames">
+            <list>
+                <value>*ServiceImpl</value>
+            </list>
+        </property>
+        <property name="interceptorNames">
+            <list>
+                <value>transactionInterceptor</value>
+            </list>
+        </property>
+    </bean>
+
+</beans>
